@@ -78,27 +78,54 @@ function wallBox(w=1.4,h=1.4,d=0.9){
 }
 function wallSwitch(){
   const g=new THREE.Group();
-  g.add(mk(new THREE.BoxGeometry(1.7,1.7,0.1),M.plate,0,0,0));
-  g.add(mk(new THREE.BoxGeometry(1.15,1.15,0.06),M.plate,0,0,0.06));
-  const pivot=new THREE.Group();pivot.position.set(0,0,0.11);
-  pivot.add(mk(new THREE.BoxGeometry(0.95,1.05,0.18),M.plate,0,0,0));
+  const plateMat=new THREE.MeshStandardMaterial({color:0xf8f8f5,roughness:0.42,metalness:0.04});
+  const frameMat=new THREE.MeshStandardMaterial({color:0xc4c8cc,roughness:0.18,metalness:0.9});
+  const rockerMat=new THREE.MeshStandardMaterial({color:0xfbfbf8,roughness:0.38,metalness:0.04});
+  const shadowMat=new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.95});
+  g.add(mk(new THREE.BoxGeometry(1.9,1.9,0.12),plateMat,0,0,0));
+  g.add(mk(new THREE.BoxGeometry(1.78,1.78,0.02),plateMat,0,0,0.07));
+  const fs=1.48,ft=0.08,fz=0.06;
+  g.add(mk(new THREE.BoxGeometry(fs,ft,fz),frameMat,0, fs/2-ft/2,0.10));
+  g.add(mk(new THREE.BoxGeometry(fs,ft,fz),frameMat,0,-fs/2+ft/2,0.10));
+  g.add(mk(new THREE.BoxGeometry(ft,fs,fz),frameMat,-fs/2+ft/2,0,0.10));
+  g.add(mk(new THREE.BoxGeometry(ft,fs,fz),frameMat, fs/2-ft/2,0,0.10));
+  g.add(mk(new THREE.BoxGeometry(1.28,1.28,0.02),shadowMat,0,0,0.075));
+  const pivot=new THREE.Group();
+  pivot.position.set(0,0,0.11);
+  pivot.add(mk(new THREE.BoxGeometry(1.22,1.22,0.12),rockerMat,0,0,0));
+  pivot.add(mk(new THREE.BoxGeometry(1.14,1.14,0.02),rockerMat,0,0,0.08));
   g.add(pivot);
-  g.add(screw(M.steel,0,0.72,0.06,0));
-  g.add(screw(M.steel,0,-0.72,0.06,0));
-  g.userData.pivot=pivot;return g;
+  g.userData.pivot=pivot;
+  return g;
 }
 function wallOutlet(){
   const g=new THREE.Group();
-  g.add(mk(new THREE.BoxGeometry(1.7,1.7,0.1),M.plate,0,0,0));
-  const rim=cy(0.78,0.78,0.06,M.plate,0,0,0.08,40);rim.rotation.x=Math.PI/2;g.add(rim);
-  const face=cy(0.68,0.68,0.05,M.plate,0,0,0.13,40);face.rotation.x=Math.PI/2;g.add(face);
-  const h1=cy(0.11,0.11,0.3,M.dark,-0.22,0.08,0.2,18);h1.rotation.x=Math.PI/2;g.add(h1);
-  const h2=cy(0.11,0.11,0.3,M.dark, 0.22,0.08,0.2,18);h2.rotation.x=Math.PI/2;g.add(h2);
-  g.add(bx(0.2,0.3,0.3,M.dark,0,-0.35,0.2));
-  g.add(bx(0.32,0.05,0.14,M.chrome,-0.22,0.38,0.24));
-  g.add(bx(0.32,0.05,0.14,M.chrome, 0.22,0.38,0.24));
-  g.add(screw(M.steel,0,0.72,0.06,0));
-  g.add(screw(M.steel,0,-0.72,0.06,0));
+  const plateMat=new THREE.MeshStandardMaterial({color:0xf8f8f5,roughness:0.42,metalness:0.04});
+  const frameMat=new THREE.MeshStandardMaterial({color:0xc4c8cc,roughness:0.22,metalness:0.75});
+  const socketMat=new THREE.MeshStandardMaterial({color:0xfbfbf8,roughness:0.35,metalness:0.03});
+  const holeMat=new THREE.MeshStandardMaterial({color:0x050505,roughness:1});
+  const brassMat=new THREE.MeshStandardMaterial({color:0xd4a340,roughness:0.25,metalness:1});
+  g.add(mk(new THREE.BoxGeometry(1.9,1.9,0.12),plateMat,0,0,0));
+  g.add(mk(new THREE.BoxGeometry(1.78,1.78,0.02),plateMat,0,0,0.07));
+  const fs=1.42,ft=0.16,fz=0.07;
+  g.add(mk(new THREE.BoxGeometry(fs,ft,fz),frameMat,0, fs/2-ft/2,0.10));
+  g.add(mk(new THREE.BoxGeometry(fs,ft,fz),frameMat,0,-fs/2+ft/2,0.10));
+  g.add(mk(new THREE.BoxGeometry(ft,fs,fz),frameMat,-fs/2+ft/2,0,0.10));
+  g.add(mk(new THREE.BoxGeometry(ft,fs,fz),frameMat, fs/2-ft/2,0,0.10));
+  const face=cy(0.52,0.52,0.08,socketMat,0,0.05,0.13,48);
+  face.rotation.x=Math.PI/2;
+  g.add(face);
+  const ridge=mk(new THREE.TorusGeometry(0.52,0.03,10,40),socketMat,0,0.05,0.18);
+  g.add(ridge);
+  const h1=cy(0.1,0.1,0.22,holeMat,-0.22,0.18,0.16,20);h1.rotation.x=Math.PI/2;g.add(h1);
+  const h2=cy(0.1,0.1,0.22,holeMat, 0.22,0.18,0.16,20);h2.rotation.x=Math.PI/2;g.add(h2);
+  const pinG=new THREE.Group();
+  pinG.position.set(0,-0.16,0.18);
+  const pin=cy(0.055,0.055,0.28,brassMat,0,0,0.05,14);pin.rotation.x=Math.PI/2;
+  pinG.add(pin);
+  g.add(pinG);
+  g.add(screw(M.steel,0,0.80,0.06,0));
+  g.add(screw(M.steel,0,-0.80,0.06,0));
   return g;
 }
 function breaker(amp=16,color=0x2f81f7){
