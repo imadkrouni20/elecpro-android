@@ -142,10 +142,83 @@ export function create3DViewer(canvas, opts){
     // حساب bounding box
     let minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9;
     for(const w of walls){
-      minX = Math.min(minX, w.x1, w.x2);
-      maxX = Math.max(maxX, w.x1, w.x2);
-      minZ = Math.min(minZ, w.z1, w.z2);
-      maxZ = Math.max(maxZ, w.z1, w.z2);
+      const dx = w.x2 - w.x1;
+      const dz = w.z2 - w.z1;
+      const len = Math.hypot(dx, dz);
+      if(len < 0.01) continue;
+      const t = w.t || 0.2;
+      const h = w.h || 2.8;
+      const angle = -Math.atan2(dz, dx);
+      const midx = (w.x1 + w.x2) / 2;
+      const midz = (w.z1 + w.z2) / 2;
+
+      const shape = new THREE.Shape();
+      shape.moveTo(-len/2, 0);
+      shape.lineTo(len/2, 0);
+      shape.lineTo(len/2, h);
+      shape.lineTo(-len/2, h);
+      shape.closePath();
+
+      const myOpenings = openings.filter(o => o.wallId === w.id);
+      for(const op of myOpenings){
+        const hx = op.t * len - len/2;
+        const ww = op.w || (op.kind === 'door' ? 0.9 : 1.2);
+        const wh = op.h || (op.kind === 'door' ? 2.1 : 1.4);
+        const baseY = op.kind === 'door' ? 0 : 0.9;
+        const hole = new THREE.Path();
+        hole.moveTo(hx - ww/2, baseY);
+        hole.lineTo(hx + ww/2, baseY);
+        hole.lineTo(hx + ww/2, baseY + wh);
+        hole.lineTo(hx - ww/2, baseY + wh);
+        hole.closePath();
+        shape.holes.push(hole);
+      }
+
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: false });
+      geo.translate(0, 0, -t/2);
+      const mesh = new THREE.Mesh(geo, [MAT.wallFaceA, MAT.wallSide]);
+      mesh.position.set(midx, 0, midz);
+      mesh.rotation.y = angle;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData = { kind: 'wall', wallId: w.id };
+      buildingGroup.add(mesh);
+      pickables.push(mesh);
+
+      const bbShape = new THREE.Shape();
+      bbShape.moveTo(-len/2, 0);
+      bbShape.lineTo(len/2, 0);
+      bbShape.lineTo(len/2, 0.09);
+      bbShape.lineTo(-len/2, 0.09);
+      bbShape.closePath();
+      for(const op of myOpenings){
+        if(op.kind !== 'door') continue;
+        const hx = op.t * len - len/2;
+        const ww = op.w || 0.9;
+        const hole = new THREE.Path();
+        hole.moveTo(hx - ww/2, 0);
+        hole.lineTo(hx + ww/2, 0);
+        hole.lineTo(hx + ww/2, 0.09);
+        hole.lineTo(hx - ww/2, 0.09);
+        hole.closePath();
+        bbShape.holes.push(hole);
+      }
+      const bbGeo = new THREE.ExtrudeGeometry(bbShape, { depth: t + 0.03, bevelEnabled: false });
+      bbGeo.translate(0, 0, -(t + 0.03)/2);
+      const bbMesh = new THREE.Mesh(bbGeo, MAT.baseboard);
+      bbMesh.position.set(midx, 0, midz);
+      bbMesh.rotation.y = angle;
+      bbMesh.castShadow = true;
+      bbMesh.raycast = function(){};
+      buildingGroup.add(bbMesh);
+
+      const crGeo = new THREE.BoxGeometry(len, 0.06, t + 0.05);
+      const crMesh = new THREE.Mesh(crGeo, MAT.crown);
+      crMesh.position.set(midx, h - 0.03, midz);
+      crMesh.rotation.y = angle;
+      crMesh.castShadow = true;
+      crMesh.raycast = function(){};
+      buildingGroup.add(crMesh);
     }
     const cx = (minX + maxX) / 2;
     const cz = (minZ + maxZ) / 2;
