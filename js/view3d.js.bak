@@ -1,0 +1,262 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+export function create3DViewer(canvas, opts){
+  opts = opts || {};
+  const onPick = opts.onPick || function(){};
+  const getData = opts.getData || function(){ return { walls: [], rooms: [], openings: [] }; };
+
+  const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  renderer.antialias = true;
+  renderer.powerPreference = 'high-performance';
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0e1a);
+
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 500);
+  camera.position.set(12, 10, 12);
+
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.12;
+  controls.minDistance = 2;
+  controls.maxDistance = 100;
+  controls.minPolarAngle = 0.1;
+  controls.maxPolarAngle = Math.PI * 0.49;
+  controls.target.set(0, 1.4, 0);
+  controls.zoomSpeed = 1.2;
+
+  // الإضاءة
+  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+  scene.add(new THREE.HemisphereLight(0xddeeff, 0x2a3545, 0.75));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+  sun.position.set(15, 25, 12);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(768, 768);
+  sun.shadow.camera.left = -40;
+  sun.shadow.camera.right = 40;
+  sun.shadow.camera.top = 40;
+  sun.shadow.camera.bottom = -40;
+  sun.shadow.bias = -0.0004;
+  scene.add(sun);
+  // (rim light removed for perf)
+
+  // المواد
+  const MAT = {
+    wallSide: new THREE.MeshStandardMaterial({ color: 0xf0ede4, roughness: 0.88, metalness: 0.02 }),
+    wallFaceA: new THREE.MeshStandardMaterial({ color: 0xfffbf0, roughness: 0.9, side: THREE.DoubleSide }),
+    wallFaceB: new THREE.MeshStandardMaterial({ color: 0xe8e3d5, roughness: 0.9, side: THREE.DoubleSide }),
+    wallTop: new THREE.MeshStandardMaterial({ color: 0xc8c4b8, roughness: 0.82 }),
+    floor: new THREE.MeshStandardMaterial({ color: 0x33404e, roughness: 0.8 }),
+    ceiling: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, side: THREE.DoubleSide, emissive: 0x2a2a2a, emissiveIntensity: 0.15 }),
+    door: new THREE.MeshStandardMaterial({ color: 0xc98b3a, roughness: 0.55 }),
+    window: new THREE.MeshPhysicalMaterial({ color: 0xaaddff, transmission: 0.85, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.55, ior: 1.45, thickness: 0.3 }),
+    highlight: new THREE.MeshStandardMaterial({ color: 0x7c5cff, emissive: 0x7c5cff, emissiveIntensity: 0.4, roughness: 0.5, transparent: true, opacity: 0.7 })
+  };
+
+  // مجموعات المشهد
+  const buildingGroup = new THREE.Group();
+  scene.add(buildingGroup);
+  const highlights = [];
+
+  // Raycaster
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  let pickables = [];
+
+  canvas.addEventListener('pointerdown', onDown);
+
+  let downPos = null;
+  function onDown(e){
+    downPos = { x: e.clientX, y: e.clientY };
+  }
+  canvas.addEventListener('pointerup', onUp);
+  function onUp(e){
+    if(!downPos) return;
+    const d = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
+    downPos = null;
+    if(d > 8) return; // drag → ignore
+    // raycast
+    const r = canvas.getBoundingClientRect();
+    pointer.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    pointer.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const hits = raycaster.intersectObjects(pickables, false);
+    if(hits.length === 0) return;
+    const obj = hits[0].object;
+    if(obj.userData && obj.userData.kind){
+      onPick(obj.userData);
+    }
+  }
+
+  function resize(){
+    const r = canvas.getBoundingClientRect();
+    if(r.width < 1 || r.height < 1) return;
+    renderer.setSize(r.width, r.height, false);
+    camera.aspect = r.width / r.height;
+    camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(canvas);
+
+  function animate(){
+    requestAnimationFrame(animate);
+    try {
+      controls.update();
+      renderer.render(scene, camera);
+    } catch(e) { console.error(e); }
+  }
+  setTimeout(function(){ resize(); animate(); }, 50);
+
+  function clearBuilding(){
+    while(buildingGroup.children.length > 0){
+      const c = buildingGroup.children[0];
+      buildingGroup.remove(c);
+      if(c.geometry) c.geometry.dispose();
+    }
+    pickables = [];
+    highlights.length = 0;
+  }
+
+  function buildFromData(){
+    clearBuilding();
+    const data = getData();
+    const walls = data.walls || [];
+    const rooms = data.rooms || [];
+    const openings = data.openings || [];
+
+    if(walls.length === 0 && rooms.length === 0){
+      return;
+    }
+
+    // حساب bounding box
+    let minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9;
+    for(const w of walls){
+      minX = Math.min(minX, w.x1, w.x2);
+      maxX = Math.max(maxX, w.x1, w.x2);
+      minZ = Math.min(minZ, w.z1, w.z2);
+      maxZ = Math.max(maxZ, w.z1, w.z2);
+    }
+    const cx = (minX + maxX) / 2;
+    const cz = (minZ + maxZ) / 2;
+
+    // أرضية البناية
+    const W = (maxX - minX) + 2;
+    const D = (maxZ - minZ) + 2;
+    const floorGeo = new THREE.BoxGeometry(W, 0.2, D);
+    const floorMesh = new THREE.Mesh(floorGeo, MAT.floor);
+    floorMesh.position.set(cx, -0.1, cz);
+    floorMesh.receiveShadow = true;
+    buildingGroup.add(floorMesh);
+
+    // الشبكة الأرضية
+    const grid = new THREE.GridHelper(Math.max(W, D) * 1.5, Math.max(W, D) * 2, 0x2a3646, 0x1a2432);
+    grid.position.set(cx, 0, cz);
+    grid.material.transparent = true;
+    grid.material.opacity = 0.25;
+    buildingGroup.add(grid);
+
+    // الجدران
+    for(const w of walls){
+      const dx = w.x2 - w.x1;
+      const dz = w.z2 - w.z1;
+      const len = Math.hypot(dx, dz);
+      if(len < 0.01) continue;
+      const t = w.t || 0.2;
+      const h = w.h || 2.8;
+
+      // الجسم
+      const geo = new THREE.BoxGeometry(len, h, t);
+      const mats = [MAT.wallSide, MAT.wallSide, MAT.wallTop, MAT.wallTop, MAT.wallFaceB, MAT.wallFaceA];
+      const mesh = new THREE.Mesh(geo, mats);
+      mesh.position.set((w.x1 + w.x2) / 2, h / 2, (w.z1 + w.z2) / 2);
+      mesh.rotation.y = -Math.atan2(dz, dx);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.userData = { kind: 'wall', wallId: w.id };
+      buildingGroup.add(mesh);
+      pickables.push(mesh);
+
+    }
+    // الأسقف
+    for(const r of rooms){
+      if(!r.points || r.points.length < 3) continue;
+      const shape = new THREE.Shape();
+      shape.moveTo(r.points[0].x - cx, -(r.points[0].z - cz));
+      for(let i = 1; i < r.points.length; i++){
+        shape.lineTo(r.points[i].x - cx, -(r.points[i].z - cz));
+      }
+      shape.closePath();
+      const geo = new THREE.ShapeGeometry(shape);
+      const mesh = new THREE.Mesh(geo, MAT.ceiling.clone());
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(cx, 2.8 - 0.02, cz);
+      mesh.receiveShadow = true;
+      mesh.userData = { kind: 'ceil', roomId: r.id };
+      buildingGroup.add(mesh);
+      pickables.push(mesh);
+    }
+
+    // الأبواب والنوافذ — داخل الجدران
+    for(const op of openings){
+      const w = walls.find(x => x.id === op.wallId);
+      if(!w) continue;
+      const dx = w.x2 - w.x1;
+      const dz = w.z2 - w.z1;
+      const len = Math.hypot(dx, dz);
+      if(len < 0.01) continue;
+      const t = w.t || 0.2;
+      const h = w.h || 2.8;
+      const px = w.x1 + dx * op.t;
+      const pz = w.z1 + dz * op.t;
+      const ww = op.w || (op.kind === 'door' ? 0.9 : 1.2);
+      const wh = op.h || (op.kind === 'door' ? 2.1 : 1.4);
+      const baseY = op.kind === 'door' ? 0 : 0.9;
+
+      const geo = new THREE.BoxGeometry(ww, wh, t * 1.05);
+      const mat = op.kind === 'door' ? MAT.door : MAT.window;
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(px, baseY + wh / 2, pz);
+      mesh.rotation.y = -Math.atan2(dz, dx);
+      mesh.castShadow = true;
+      buildingGroup.add(mesh);
+    }
+
+    // ضبط الكاميرا
+    const size = Math.max(maxX - minX, maxZ - minZ, 8);
+    camera.position.set(cx + size * 1.1, size * 1.0, cz + size * 1.1);
+    controls.target.set(cx, 1.4, cz);
+    controls.update();
+  }
+
+  function fitView(){
+    const data = getData();
+    const walls = data.walls || [];
+    if(!walls.length) return;
+    let minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9;
+    for(const w of walls){
+      minX = Math.min(minX, w.x1, w.x2);
+      maxX = Math.max(maxX, w.x1, w.x2);
+      minZ = Math.min(minZ, w.z1, w.z2);
+      maxZ = Math.max(maxZ, w.z1, w.z2);
+    }
+    const cx = (minX + maxX) / 2;
+    const cz = (minZ + maxZ) / 2;
+    const size = Math.max(maxX - minX, maxZ - minZ, 6);
+    camera.position.set(cx + size * 1.1, size * 0.9, cz + size * 1.1);
+    controls.target.set(cx, 1.4, cz);
+    controls.update();
+  }
+
+  return {
+    scene, camera, controls, renderer,
+    buildFromData, fitView,
+    resize: function(){ resize(); },
+    MAT
+  };
+}

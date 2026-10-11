@@ -1,0 +1,51 @@
+:root{
+  --bg: #0a0e1a;
+  --bg-2: #0e1422;
+  --surface: #121826;
+  --surface-2: #1a2236;
+  --border: rgba(255,255,255,0.06);
+  --border-strong: rgba(255,255,255,0.12);
+  --text: #e8eef7;
+  --text-dim: #8899ad;
+  --text-mute: #5a6a80;
+  --primary: #7c5cff;
+  --primary-2: #5b3ce6;
+  --cyan: #00d4ff;
+  --cyan-2: #0093b8;
+  --green: #10d980;
+  --green-2: #0a9c5c;
+  --amber: #ffb84d;
+  --amber-2: #d98a1e;
+  --red: #ff5964;
+  --red-2: #c4353f;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px;
+  --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-7: 32px;
+  --sh-sm: 0 2px 8px rgba(0,0,0,.25);
+  --sh-md: 0 6px 20px rgba(0,0,0,.35);
+  --sh-lg: 0 14px 40px rgba(0,0,0,.45);
+  --sh-primary: 0 10px 30px rgba(124,92,255,.35);
+  --sh-cyan: 0 10px 30px rgba(0,212,255,.35);
+  --ease: cubic-bezier(.32,.72,.28,1);
+  --dur-1: 180ms;
+  --dur-2: 280ms;
+  --dur-3: 420ms;
+  --nav-h: 68px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Tahoma, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+button{font-family:inherit;color:inherit;background:none;border:none;cursor:pointer}
+svg{display:block}
+::-webkit-scrollbar{width:0;height:0}

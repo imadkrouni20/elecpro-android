@@ -1,0 +1,34 @@
+@keyframes pulse{
+  0%,100%{transform: scale(1);opacity:1}
+  50%{transform: scale(1.06);opacity:.9}
+}
+@keyframes loadbar{
+  0%{width:0}
+  60%{width:70%}
+  100%{width:100%}
+}
+@keyframes toastIn{
+  from{transform: translateY(-20px);opacity:0}
+  to{transform: translateY(0);opacity:1}
+}
+@keyframes toastOut{
+  to{transform: translateY(-20px);opacity:0}
+}
+@keyframes fadeIn{
+  from{opacity:0}
+  to{opacity:1}
+}
+@keyframes slideUp{
+  from{transform: translateY(12px);opacity:0}
+  to{transform: translateY(0);opacity:1}
+}
+.fade-in{animation: fadeIn var(--dur-2) var(--ease)}
+.slide-up{animation: slideUp var(--dur-2) var(--ease)}
+
+.ripple{position:relative;overflow:hidden}
+.ripple::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;
+  background: radial-gradient(circle, rgba(255,255,255,.35), transparent 60%);
+  opacity:0;transition: opacity var(--dur-1);
+}
+.ripple:active::after{opacity:1}
