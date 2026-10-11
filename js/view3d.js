@@ -33,8 +33,11 @@ export function create3DViewer(canvas, opts){
   controls.zoomSpeed = 1.2;
 
   // الإضاءة
-  scene.add(new THREE.AmbientLight(0xffffff, 0.65));
-  scene.add(new THREE.HemisphereLight(0xddeeff, 0x2a3545, 0.75));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+  scene.add(new THREE.HemisphereLight(0xddeeff, 0x2a3545, 0.85));
+  const warm = new THREE.PointLight(0xffddaa, 0.5, 15);
+  warm.position.set(0, 2.5, 0);
+  scene.add(warm);
   const sun = new THREE.DirectionalLight(0xffffff, 2.2);
   sun.position.set(15, 25, 12);
   sun.castShadow = true;
@@ -49,10 +52,12 @@ export function create3DViewer(canvas, opts){
 
   // المواد
   const MAT = {
-    wallSide: new THREE.MeshStandardMaterial({ color: 0xf0ede4, roughness: 0.88, metalness: 0.02 }),
-    wallFaceA: new THREE.MeshStandardMaterial({ color: 0xfffbf0, roughness: 0.9, side: THREE.DoubleSide }),
-    wallFaceB: new THREE.MeshStandardMaterial({ color: 0xe8e3d5, roughness: 0.9, side: THREE.DoubleSide }),
+    wallSide: new THREE.MeshStandardMaterial({ color: 0xe8e0d0, roughness: 0.92, metalness: 0.01 }),
+    wallFaceA: new THREE.MeshStandardMaterial({ color: 0xfaf3e0, roughness: 0.9, side: THREE.DoubleSide }),
+    wallFaceB: new THREE.MeshStandardMaterial({ color: 0xe0d8c5, roughness: 0.9, side: THREE.DoubleSide }),
     wallTop: new THREE.MeshStandardMaterial({ color: 0xc8c4b8, roughness: 0.82 }),
+    baseboard: new THREE.MeshStandardMaterial({ color: 0xf5f0e5, roughness: 0.7 }),
+    crown: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }),
     floor: new THREE.MeshStandardMaterial({ color: 0x33404e, roughness: 0.8 }),
     ceiling: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, side: THREE.DoubleSide, emissive: 0x2a2a2a, emissiveIntensity: 0.15 }),
     door: new THREE.MeshStandardMaterial({ color: 0xc98b3a, roughness: 0.55 }),
@@ -182,6 +187,25 @@ export function create3DViewer(canvas, opts){
       buildingGroup.add(mesh);
       pickables.push(mesh);
 
+      // قاعدة الجدار (Baseboard) — شريط رقيق في الأسفل
+      const bbGeo = new THREE.BoxGeometry(len, 0.08, t + 0.04);
+      const bbMesh = new THREE.Mesh(bbGeo, MAT.baseboard);
+      bbMesh.position.set((w.x1+w.x2)/2, 0.04, (w.z1+w.z2)/2);
+      bbMesh.rotation.y = -Math.atan2(dz, dx);
+      bbMesh.castShadow = true;
+      bbMesh.receiveShadow = true;
+      bbMesh.raycast = function(){};
+      buildingGroup.add(bbMesh);
+
+      // تاج الجدار (Crown molding) — شريط في الأعلى
+      const crGeo = new THREE.BoxGeometry(len, 0.06, t + 0.05);
+      const crMesh = new THREE.Mesh(crGeo, MAT.crown);
+      crMesh.position.set((w.x1+w.x2)/2, h - 0.03, (w.z1+w.z2)/2);
+      crMesh.rotation.y = -Math.atan2(dz, dx);
+      crMesh.castShadow = true;
+      crMesh.raycast = function(){};
+      buildingGroup.add(crMesh);
+
     }
     // الأسقف
     for(const r of rooms){
@@ -193,10 +217,9 @@ export function create3DViewer(canvas, opts){
       }
       shape.closePath();
       const geo = new THREE.ShapeGeometry(shape);
-      const mesh = new THREE.Mesh(geo, MAT.ceiling.clone());
+      const mesh = new THREE.Mesh(geo, MAT.ceiling);
       mesh.rotation.x = -Math.PI / 2;
       mesh.position.set(cx, 2.8 - 0.02, cz);
-      mesh.receiveShadow = true;
       mesh.userData = { kind: 'ceil', roomId: r.id };
       buildingGroup.add(mesh);
       pickables.push(mesh);
@@ -232,11 +255,11 @@ export function create3DViewer(canvas, opts){
     }
 
     function buildDoor(g, ww, wh, t){
-      const frameW = 0.07;
+      const frameW = 0.10;
       const frameMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.55, metalness: 0.05 });
       const panelMat = new THREE.MeshStandardMaterial({ color: 0xa67142, roughness: 0.6 });
       const knobMat = new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.25, metalness: 0.9 });
-      const depth = t * 1.02;
+      const depth = t * 1.08;
 
       // إطار علوي
       const top = new THREE.Mesh(new THREE.BoxGeometry(ww, frameW, depth), frameMat);
@@ -264,16 +287,21 @@ export function create3DViewer(canvas, opts){
         { w: panelW * 0.7, h: panelH * 0.35, y: panelH * 0.72 },
         { w: panelW * 0.7, h: panelH * 0.35, y: panelH * 0.28 }
       ]){
-        const r = new THREE.Mesh(new THREE.BoxGeometry(box.w, box.h, 0.02), recessMat);
+        const r = new THREE.Mesh(new THREE.BoxGeometry(box.w, box.h, 0.03), recessMat);
         r.position.set(0, box.y, t * 0.25);
         g.add(r);
       }
 
       // مقبض الباب
-      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 12), knobMat);
-      knob.position.set(panelW/2 - 0.14, wh * 0.48, t * 0.35);
+      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.07, 20, 16), knobMat);
+      knob.position.set(panelW/2 - 0.13, wh * 0.45, t * 0.4);
       knob.castShadow = true;
       g.add(knob);
+      // ذراع المقبض
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.09, 12), knobMat);
+      stem.rotation.z = Math.PI/2;
+      stem.position.set(panelW/2 - 0.18, wh * 0.45, t * 0.4);
+      g.add(stem);
 
       // مفصلات (3 على الجانب)
       const hingeMat = new THREE.MeshStandardMaterial({ color: 0xb88a3a, roughness: 0.3, metalness: 0.9 });
@@ -290,8 +318,8 @@ export function create3DViewer(canvas, opts){
     }
 
     function buildWindow(g, ww, wh, t){
-      const frameW = 0.06;
-      const frameMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.35, metalness: 0.05 });
+      const frameW = 0.09;
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.05 });
       const glassMat = new THREE.MeshPhysicalMaterial({
         color: 0xcfe8ff,
         transmission: 0.92,
@@ -302,7 +330,7 @@ export function create3DViewer(canvas, opts){
         ior: 1.5,
         thickness: 0.05
       });
-      const depth = t * 1.02;
+      const depth = t * 1.08;
 
       // إطار (4 قطع)
       const top = new THREE.Mesh(new THREE.BoxGeometry(ww, frameW, depth), frameMat);
@@ -328,10 +356,10 @@ export function create3DViewer(canvas, opts){
       g.add(glass);
 
       // عارضة عمودية + أفقية (Mullions)
-      const mV = new THREE.Mesh(new THREE.BoxGeometry(0.025, wh - frameW*2, depth * 0.6), frameMat);
+      const mV = new THREE.Mesh(new THREE.BoxGeometry(0.04, wh - frameW*2, depth * 0.7), frameMat);
       mV.position.set(0, wh/2, 0);
       g.add(mV);
-      const mH = new THREE.Mesh(new THREE.BoxGeometry(ww - frameW*2, 0.025, depth * 0.6), frameMat);
+      const mH = new THREE.Mesh(new THREE.BoxGeometry(ww - frameW*2, 0.04, depth * 0.7), frameMat);
       mH.position.set(0, wh/2, 0);
       g.add(mH);
 
