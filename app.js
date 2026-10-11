@@ -1,490 +1,410 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const canvas = document.getElementById('c');
-const viewer = document.getElementById('viewer');
-const tabsEl = document.getElementById('tabs');
-const infoEl = document.getElementById('info');
-const controlsEl = document.getElementById('controls');
+const canvas=document.getElementById('c'),viewer=document.getElementById('viewer');
+const tabsEl=document.getElementById('tabs'),infoEl=document.getElementById('info'),controlsEl=document.getElementById('controls');
 
-const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.15;
-renderer.shadowMap.enabled = true;
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0b0f14);
-scene.fog = new THREE.Fog(0x0b0f14, 22, 50);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0a0e13);
+scene.fog=new THREE.Fog(0x0a0e13,28,60);
 
-const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
-camera.position.set(0, 3, 13);
+const pmrem=new THREE.PMREMGenerator(renderer);
+const ec=document.createElement('canvas');ec.width=256;ec.height=128;
+const ex=ec.getContext('2d');const gg=ex.createLinearGradient(0,0,0,128);
+gg.addColorStop(0,'#d8e4f0');gg.addColorStop(0.45,'#7a8a9a');gg.addColorStop(1,'#202830');
+ex.fillStyle=gg;ex.fillRect(0,0,256,128);
+const et=new THREE.CanvasTexture(ec);
+et.mapping=THREE.EquirectangularReflectionMapping;et.colorSpace=THREE.SRGBColorSpace;
+scene.environment=pmrem.fromEquirectangular(et).texture;
 
-const controls = new OrbitControls(camera, canvas);
-controls.enableDamping = true;
-controls.dampingFactor = 0.08;
-controls.minDistance = 6;
-controls.maxDistance = 30;
-controls.minPolarAngle = 0.2;
-controls.maxPolarAngle = Math.PI * 0.62;
-controls.target.set(0, 1, 0);
-controls.autoRotate = true;
-controls.autoRotateSpeed = 0.35;
+const camera=new THREE.PerspectiveCamera(45,1,0.1,200);
+camera.position.set(0,4,14);
+const controls=new OrbitControls(camera,canvas);
+controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=5;controls.maxDistance=32;
+controls.minPolarAngle=0.15;controls.maxPolarAngle=Math.PI*0.6;
+controls.autoRotate=true;controls.autoRotateSpeed=0.3;
+controls.target.set(0,1,0);
 
-scene.add(new THREE.HemisphereLight(0xd6e6ff, 0x1a2230, 0.9));
-const key = new THREE.DirectionalLight(0xffffff, 2.0);
-key.position.set(6, 10, 8);
-key.castShadow = true;
+scene.add(new THREE.HemisphereLight(0xd4e4f4,0x1a2230,0.55));
+const key=new THREE.DirectionalLight(0xffffff,2.5);
+key.position.set(7,12,6);key.castShadow=true;
 key.shadow.mapSize.set(1024,1024);
-key.shadow.camera.left=-16; key.shadow.camera.right=16;
-key.shadow.camera.top=16; key.shadow.camera.bottom=-16;
+key.shadow.camera.left=-16;key.shadow.camera.right=16;
+key.shadow.camera.top=16;key.shadow.camera.bottom=-16;
+key.shadow.bias=-0.0003;key.shadow.normalBias=0.02;
 scene.add(key);
-const fill = new THREE.DirectionalLight(0x88aaff, 0.6);
-fill.position.set(-8, 6, -6); scene.add(fill);
+const rim=new THREE.DirectionalLight(0x88bbff,0.4);rim.position.set(-8,5,-8);scene.add(rim);
 
-const MAT = {
-  plastic:  new THREE.MeshStandardMaterial({color:0xeef0f3, roughness:0.5, metalness:0.05}),
-  dark:     new THREE.MeshStandardMaterial({color:0x1c2026, roughness:0.65}),
-  grey:     new THREE.MeshStandardMaterial({color:0x8a9099, roughness:0.6}),
-  metal:    new THREE.MeshStandardMaterial({color:0xcfd5dd, roughness:0.22, metalness:0.95}),
-  brass:    new THREE.MeshStandardMaterial({color:0xd8b452, roughness:0.28, metalness:0.95}),
-  red:      new THREE.MeshStandardMaterial({color:0xd0433b, roughness:0.5}),
-  green:    new THREE.MeshStandardMaterial({color:0x2eb872, roughness:0.5}),
-  blue:     new THREE.MeshStandardMaterial({color:0x3a82d6, roughness:0.5}),
-  yellow:   new THREE.MeshStandardMaterial({color:0xf1c40f, roughness:0.5}),
+const M={
+  wall:new THREE.MeshStandardMaterial({color:0xdde3e8,roughness:0.95}),
+  plate:new THREE.MeshPhysicalMaterial({color:0xfafbfc,roughness:0.3,metalness:0.05,clearcoat:0.7,clearcoatRoughness:0.25}),
+  plateDark:new THREE.MeshPhysicalMaterial({color:0x1a1d21,roughness:0.35,metalness:0.1,clearcoat:0.6}),
+  chrome:new THREE.MeshPhysicalMaterial({color:0xe8ecf0,roughness:0.12,metalness:1.0}),
+  brass:new THREE.MeshPhysicalMaterial({color:0xd4a340,roughness:0.22,metalness:1.0}),
+  copper:new THREE.MeshPhysicalMaterial({color:0xc47830,roughness:0.25,metalness:1.0}),
+  steel:new THREE.MeshPhysicalMaterial({color:0xc0c6cc,roughness:0.22,metalness:1.0}),
+  dark:new THREE.MeshStandardMaterial({color:0x14171c,roughness:0.6}),
+  grey:new THREE.MeshStandardMaterial({color:0x6a7078,roughness:0.65}),
+  iRed:new THREE.MeshPhysicalMaterial({color:0xb82222,roughness:0.5,sheen:1,sheenRoughness:0.6,sheenColor:0xff7777}),
+  iBlue:new THREE.MeshPhysicalMaterial({color:0x1a5ac0,roughness:0.5,sheen:1,sheenRoughness:0.6,sheenColor:0x6699ee}),
+  iGreen:new THREE.MeshPhysicalMaterial({color:0x188a4a,roughness:0.5,sheen:1,sheenRoughness:0.6,sheenColor:0x66ffaa}),
+  iYellow:new THREE.MeshPhysicalMaterial({color:0xd8b010,roughness:0.5,sheen:1,sheenRoughness:0.6,sheenColor:0xffee88}),
+  glass:new THREE.MeshPhysicalMaterial({color:0xffffff,transmission:0.95,roughness:0.05,ior:1.5,thickness:0.5,transparent:true,opacity:0.6}),
+  filament:new THREE.MeshStandardMaterial({color:0xffcc33,emissive:0xffaa22,emissiveIntensity:0,roughness:0.3}),
+  bulbOn:new THREE.MeshStandardMaterial({color:0xfff5d0,emissive:0xffcc55,emissiveIntensity:0,roughness:0.3,transparent:true,opacity:0.85}),
 };
-
-const box = (w,h,d,mat,x=0,y=0,z=0) => {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
-  m.position.set(x,y,z); m.castShadow = m.receiveShadow = true; return m;
-};
-const cyl = (rt,rb,h,mat,x=0,y=0,z=0,seg=24) => {
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg), mat);
-  m.position.set(x,y,z); m.castShadow = m.receiveShadow = true; return m;
-};
-const sph = (r,mat,x=0,y=0,z=0) => {
-  const m = new THREE.Mesh(new THREE.SphereGeometry(r,24,18), mat);
-  m.position.set(x,y,z); m.castShadow = m.receiveShadow = true; return m;
-};
-
-const eGeo = new THREE.SphereGeometry(0.10, 10, 8);
-
-function makeWire(points, opts={}){
-  const { color = 0x8b1a1a, radius = 0.075, closed = false, count = 16, electronColor = 0xffd060 } = opts;
-  const curve = new THREE.CatmullRomCurve3(
-    points.map(p=>new THREE.Vector3(p[0],p[1],p[2])), closed, 'catmullrom', 0.4);
-  const geo = new THREE.TubeGeometry(curve, Math.max(60, points.length*24), radius, 10, closed);
-  const mat = new THREE.MeshStandardMaterial({color, roughness:0.55, metalness:0.35});
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.castShadow = true;
-  const eMat = new THREE.MeshStandardMaterial({color:electronColor, emissive:electronColor, emissiveIntensity:2.4});
-  const electrons = [];
-  for (let i=0;i<count;i++){
-    const e = new THREE.Mesh(eGeo, eMat);
-    e.userData.offset = i/count;
-    e.visible = false;
-    electrons.push(e);
-  }
-  return {mesh, curve, electrons};
-}
+const SG={s:new THREE.SphereGeometry(1,20,14),sHi:new THREE.SphereGeometry(1,28,20)};
+const mk=(g,m,x=0,y=0,z=0)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;return o;};
+const bx=(w,h,d,m,x=0,y=0,z=0)=>mk(new THREE.BoxGeometry(w,h,d),m,x,y,z);
+const cy=(rt,rb,h,m,x=0,y=0,z=0,s=24)=>mk(new THREE.CylinderGeometry(rt,rb,h,s),m,x,y,z);
+const sp=(r,m,x=0,y=0,z=0,hi=false)=>{const o=new THREE.Mesh(hi?SG.sHi:SG.s,m);o.scale.setScalar(r);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;return o;};
+const tr=(R,r,m,x=0,y=0,z=0)=>mk(new THREE.TorusGeometry(R,r,12,32),m,x,y,z);
 
 function newCtx(){
-  return { group: new THREE.Group(), wires: [], lamps: [], switches: [], closed: true,
-    target:[0,1.2,0], camPos:[0,3.5,12], buttons: [], update: null };
+  return{group:new THREE.Group(),wires:[],lamps:[],switches:[],closed:true,
+    target:[0,1.5,0],camPos:[0,4,14],buttons:[],update:null,flowAll:true};
 }
-function addWire(ctx, points, opts){
-  const w = makeWire(points, opts);
-  ctx.group.add(w.mesh);
-  for (const e of w.electrons) ctx.group.add(e);
-  ctx.wires.push(w); return w;
+function addCable(ctx,points,opts={}){
+  const c=cable(points,opts);ctx.group.add(c.group);ctx.wires.push(c);return c;
 }
-function addLamp(ctx, pos, size=0.5, branch=-1){
-  const mat = new THREE.MeshStandardMaterial({color:0xfff0cf, emissive:0xffcc33, emissiveIntensity:0, roughness:0.3});
-  const bulb = sph(size, mat, pos[0], pos[1], pos[2]);
-  ctx.group.add(bulb);
-  const light = new THREE.PointLight(0xffe09a, 0, size*16);
-  light.position.set(pos[0], pos[1], pos[2]);
-  ctx.group.add(light);
-  const entry = {mesh: bulb, mat, light, size, base: 4.0, branch};
-  ctx.lamps.push(entry); return entry;
-}
-function addSwitchVisual(ctx, pos, width=1.2){
-  const g = new THREE.Group();
-  g.position.set(pos[0], pos[1], pos[2]);
-  g.add(box(width+0.5, 0.28, 0.6, MAT.dark, 0, 0, 0));
-  g.add(sph(0.11, MAT.brass, -width/2, 0.16, 0));
-  g.add(sph(0.11, MAT.brass,  width/2, 0.16, 0));
-  const pivot = new THREE.Group();
-  pivot.position.set(-width/2, 0.16, 0);
-  const bar = cyl(0.07, 0.07, width, MAT.metal, width/2, 0, 0, 12);
-  bar.rotation.z = Math.PI/2;
-  pivot.add(bar); g.add(pivot); ctx.group.add(g);
-  ctx.switches.push({pivot, rot: 0});
+function addLampAt(ctx,pos,size=0.65,branch=-1){
+  const b=bulbE27(size);b.position.set(...pos);ctx.group.add(b);
+  const e={obj:b,base:4.5,branch};ctx.lamps.push(e);return e;
 }
 
-function updateSwitches(ctx, closed){
-  for (const s of ctx.switches){
-    const target = closed ? 0 : 0.6;
-    s.rot += (target - s.rot) * 0.18;
-    s.pivot.rotation.z = s.rot;
-  }
-}
-function updateLamps(ctx, branchMask){
-  for (const L of ctx.lamps){
-    const on = branchMask === true || (Array.isArray(branchMask) && branchMask[L.branch]);
-    const ti = on ? L.base : 0;
-    L.light.intensity += (ti - L.light.intensity) * 0.14;
-    L.mat.emissiveIntensity += ((on?2.5:0) - L.mat.emissiveIntensity) * 0.14;
-  }
-}
-
+/* دارة 1: دارة بسيطة بمفتاح جداري */
 function buildSimple(){
-  const ctx = newCtx();
-  ctx.target = [0, 1, 0]; ctx.camPos = [0.5, 3.5, 12];
-  const L = -4, R = 4, B = -1.2, T = 3.0, sw = 0.8;
-  addWire(ctx, [[-sw,T,0],[L,T,0],[L,B,0],[R,B,0],[R,T,0],[sw,T,0]],
-    {color:0x8b1a1a, radius:0.085, closed:true, count:26, electronColor:0xffd060});
-  const bat = new THREE.Group();
-  bat.add(box(2.4, 0.9, 0.7, MAT.dark, 0, 0, 0));
-  bat.add(box(2.4, 0.5, 0.72, MAT.yellow, 0, 0.22, 0));
-  bat.add(box(0.5, 0.6, 0.74, MAT.red, 1.2, 0.15, 0));
-  bat.add(box(0.5, 0.6, 0.74, MAT.blue, -1.2, 0.15, 0));
-  bat.position.set(0, B, 0); ctx.group.add(bat);
-  addSwitchVisual(ctx, [0, T, 0], 1.6);
-  addLamp(ctx, [R, 0.9, 0], 0.55);
-  ctx.group.add(cyl(0.4, 0.5, 0.35, MAT.brass, R, 0.25, 0, 24));
-  ctx.update = () => { updateSwitches(ctx, ctx.closed); updateLamps(ctx, ctx.closed); };
-  ctx.buttons = [{getLabel:()=>ctx.closed?'🔒 اقفل الدارة':'🔓 شغّل الدارة',
-    getActive:()=>ctx.closed, onClick:()=>{ctx.closed = !ctx.closed;}}];
+  const ctx=newCtx();ctx.target=[0,2,0];ctx.camPos=[0,4,14];
+  ctx.group.add(wall(14,8,0.4,0,3.5,-2.2));
+  const box=wallBox(1.4,1.4,0.9);box.position.set(0,5.5,-1.2);ctx.group.add(box);
+  const sw=wallSwitch();sw.position.set(0,5.5,-0.65);ctx.group.add(sw);
+
+  // كابل من صندوق التوزيع (الأسفل الأيسر) إلى المفتاح
+  addCable(ctx,[[-5,1.2,-1.8],[-3.5,1.2,-1.8],[-2,3.5,-1.8],[-0.4,5.5,-1.8]],
+    {insulation:M.iRed,count:20,radius:0.075});
+  // كابل من المفتاح إلى المصباح (الأعلى)
+  addCable(ctx,[[0.4,5.5,-1.8],[2.5,6,-1.8],[3.5,6.5,-1.8]],
+    {insulation:M.iRed,count:14,radius:0.075});
+  // كابل العودة من المصباح إلى اللوحة (محايد أزرق)
+  addCable(ctx,[[3.5,5.6,-1.8],[5,1.2,-1.8]],
+    {insulation:M.iBlue,count:16,radius:0.075});
+  // أرضي أخضر/أصفر
+  addCable(ctx,[[-5,0.6,-1.8],[-3.5,0.6,-1.8],[-2,2.5,-1.8],[0,5.5,-1.8],[3.5,5.6,-1.8],[5,0.6,-1.8]],
+    {insulation:M.iGreen,count:18,radius:0.055,exposeEnds:false});
+
+  const rose=ceilingRose();rose.position.set(3.5,7,-1.8);ctx.group.add(rose);
+  addLampAt(ctx,[3.5,6.15,-1.8],0.7);
+
+  ctx.update=()=>{
+    const on=ctx.closed;
+    sw.userData.pivot.rotation.x=on?-0.05:0.28;
+    for(const L of ctx.lamps){
+      const g=L.obj.userData;
+      g.light.intensity+=( (on?5:0) - g.light.intensity )*0.14;
+      g.filament.material.emissiveIntensity+=( (on?6:0) - g.filament.material.emissiveIntensity )*0.14;
+      M.bulbOn.emissiveIntensity+=( (on?1.6:0) - M.bulbOn.emissiveIntensity )*0.14;
+    }
+  };
+  ctx.buttons=[{getLabel:()=>ctx.closed?'🔒 فتح المفتاح':'🔓 غلق المفتاح',getActive:()=>ctx.closed,onClick:()=>{ctx.closed=!ctx.closed;}}];
   return ctx;
 }
 
+/* دارة 2: التوالي - مصباحان */
 function buildSeries(){
-  const ctx = newCtx();
-  ctx.target = [0, 1, 0]; ctx.camPos = [0.5, 3.5, 13];
-  const L = -4, R = 4, B = -1.5, T = 3.2, sw = 0.8;
-  addWire(ctx, [[-sw,T,0],[L,T,0],[L,B,0],[R,B,0],[R,T,0],[sw,T,0]],
-    {color:0x8b1a1a, radius:0.085, closed:true, count:28, electronColor:0xffd060});
-  const bat = new THREE.Group();
-  bat.add(box(2.4, 0.9, 0.7, MAT.dark, 0, 0, 0));
-  bat.add(box(2.4, 0.5, 0.72, MAT.yellow, 0, 0.22, 0));
-  bat.position.set(0, B, 0); ctx.group.add(bat);
-  addSwitchVisual(ctx, [0, T, 0], 1.6);
-  addLamp(ctx, [R, 2.0, 0], 0.45);
-  addLamp(ctx, [R, -0.35, 0], 0.45);
-  ctx.group.add(cyl(0.32, 0.42, 0.28, MAT.brass, R, 1.6, 0, 20));
-  ctx.group.add(cyl(0.32, 0.42, 0.28, MAT.brass, R, -0.75, 0, 20));
-  ctx.update = () => {
-    updateSwitches(ctx, ctx.closed);
-    for (const L2 of ctx.lamps){
-      const on = ctx.closed;
-      L2.light.intensity += ((on?2.2:0) - L2.light.intensity) * 0.14;
-      L2.mat.emissiveIntensity += ((on?1.6:0) - L2.mat.emissiveIntensity) * 0.14;
+  const ctx=newCtx();ctx.target=[0,3,0];ctx.camPos=[0,5,16];
+  ctx.group.add(wall(14,9,0.4,0,3.5,-2.2));
+
+  // كابل ذهاب
+  addCable(ctx,[[-5,1.2,-1.8],[-3,1.2,-1.8],[-3,7,-1.8],[-1.5,7.5,-1.8],[-1.5,7.5,-1.5]],
+    {insulation:M.iRed,count:20});
+  addCable(ctx,[[-1.5,7.5,-1.8],[-1.5,5.2,-1.8]],
+    {insulation:M.iRed,count:8});
+  addCable(ctx,[[-1.5,4.0,-1.8],[-1.5,2.5,-1.8]],
+    {insulation:M.iRed,count:8});
+  addCable(ctx,[[-1.5,1.3,-1.8],[-1.5,0.8,-1.8],[-5,0.8,-1.8]],
+    {insulation:M.iBlue,count:16});
+
+  addLampAt(ctx,[-1.5,4.6,-1.8],0.7,0);
+  addLampAt(ctx,[-1.5,1.85,-1.8],0.7,1);
+  const r1=ceilingRose();r1.position.set(-1.5,5.5,-1.8);ctx.group.add(r1);
+  const r2=ceilingRose();r2.position.set(-1.5,2.75,-1.8);ctx.group.add(r2);
+
+  // إعادة توزيع الإلكترونات لكل أسلاك هذه الدارة
+  // دارة التوالي: نفس التيار يجري في كل الأسلاك
+
+  ctx.update=()=>{
+    const on=ctx.closed;
+    for(const L of ctx.lamps){
+      const g=L.obj.userData;
+      g.light.intensity+=((on?2.2:0)-g.light.intensity)*0.14;
+      g.filament.material.emissiveIntensity+=((on?2.5:0)-g.filament.material.emissiveIntensity)*0.14;
     }
   };
-  ctx.buttons = [{getLabel:()=>ctx.closed?'🔒 اقفل الدارة':'🔓 شغّل الدارة',
-    getActive:()=>ctx.closed, onClick:()=>{ctx.closed = !ctx.closed;}}];
+  ctx.buttons=[{getLabel:()=>ctx.closed?'🔒 اقفل الدارة':'🔓 شغّل الدارة',getActive:()=>ctx.closed,onClick:()=>{ctx.closed=!ctx.closed;}}];
   return ctx;
 }
 
+/* دارة 3: التوازي - مصباحان مستقلان */
 function buildParallel(){
-  const ctx = newCtx();
-  ctx.target = [0, 1, 0]; ctx.camPos = [0.5, 3.5, 13];
-  const L = -4.5, R = 3.5, B = -1.2, T = 3.2;
-  addWire(ctx, [[L,-2.0,0],[L,T,0],[R,T,0],[R,B,0],[L,B,0],[L,-2.0,0]],
-    {color:0x8b1a1a, radius:0.08, closed:true, count:30, electronColor:0xffd060});
-  const bat = new THREE.Group();
-  bat.add(box(0.9, 2.2, 0.7, MAT.dark, 0, 0, 0));
-  bat.add(box(0.7, 1.0, 0.72, MAT.yellow, 0, 0.3, 0));
-  bat.add(box(0.72, 0.4, 0.74, MAT.red, 0, 0.9, 0));
-  bat.add(box(0.72, 0.4, 0.74, MAT.blue, 0, -0.3, 0));
-  bat.position.set(L, -1.0, 0); ctx.group.add(bat);
-  const swGroup = new THREE.Group();
-  swGroup.position.set(L, 1.6, 0);
-  swGroup.add(box(0.6, 1.6, 0.5, MAT.dark, 0, 0, 0));
-  ctx.group.add(swGroup);
-  const lever = box(0.35, 0.9, 0.55, MAT.metal, 0, 0.45, 0.05);
-  ctx.group.add(lever);
-  addWire(ctx, [[0,-1.2,0],[0,3.2,0]], {color:0x8b1a1a, radius:0.06, count:10, electronColor:0xffd060});
-  addWire(ctx, [[R,-1.2,0],[R,3.2,0]], {color:0x8b1a1a, radius:0.06, count:10, electronColor:0xffd060});
-  for (const x of [0, R]){
-    ctx.group.add(sph(0.14, MAT.brass, x, T, 0));
-    ctx.group.add(sph(0.14, MAT.brass, x, B, 0));
-  }
-  addLamp(ctx, [0, 1.0, 0], 0.55, 0);
-  addLamp(ctx, [R, 1.0, 0], 0.55, 1);
-  ctx.group.add(cyl(0.38, 0.48, 0.32, MAT.brass, 0, 0.35, 0, 24));
-  ctx.group.add(cyl(0.38, 0.48, 0.32, MAT.brass, R, 0.35, 0, 24));
-  ctx.update = () => {
-    const on = ctx.closed;
-    lever.position.y = on ? 0 : 0.9;
-    lever.rotation.z = on ? 0 : -0.5;
-    updateLamps(ctx, on);
+  const ctx=newCtx();ctx.target=[0,3,0];ctx.camPos=[0,5,16];
+  ctx.group.add(wall(14,9,0.4,0,3.5,-2.2));
+
+  // تغذية عامة
+  addCable(ctx,[[-6,1.2,-1.8],[-4.5,1.2,-1.8],[-4.5,7.5,-1.8],[4.5,7.5,-1.8]],
+    {insulation:M.iRed,count:26});
+  // فرع 1
+  addCable(ctx,[[-1.8,7.5,-1.8],[-1.8,6,-1.8]],
+    {insulation:M.iRed,count:6});
+  addCable(ctx,[[-1.8,5,-1.8],[-1.8,4.2,-1.8],[-1.8,1.2,-1.8],[-4.5,1.2,-1.8]],
+    {insulation:M.iBlue,count:18});
+  // فرع 2
+  addCable(ctx,[[1.8,7.5,-1.8],[1.8,6,-1.8]],
+    {insulation:M.iRed,count:6});
+  addCable(ctx,[[1.8,5,-1.8],[1.8,4.2,-1.8],[1.8,1.2,-1.8],[-4.5,1.2,-1.8]],
+    {insulation:M.iBlue,count:22});
+
+  const r1=ceilingRose();r1.position.set(-1.8,5.5,-1.8);ctx.group.add(r1);
+  const r2=ceilingRose();r2.position.set(1.8,5.5,-1.8);ctx.group.add(r2);
+  addLampAt(ctx,[-1.8,4.55,-1.8],0.7,0);
+  addLampAt(ctx,[ 1.8,4.55,-1.8],0.7,1);
+
+  ctx.update=()=>{
+    const on=ctx.closed;
+    for(const L of ctx.lamps){
+      const g=L.obj.userData;
+      g.light.intensity+=((on?5:0)-g.light.intensity)*0.14;
+      g.filament.material.emissiveIntensity+=((on?6:0)-g.filament.material.emissiveIntensity)*0.14;
+    }
   };
-  ctx.buttons = [{getLabel:()=>ctx.closed?'🔒 اقفل الدارة':'🔓 شغّل الدارة',
-    getActive:()=>ctx.closed, onClick:()=>{ctx.closed = !ctx.closed;}}];
+  ctx.buttons=[{getLabel:()=>ctx.closed?'🔒 اقفل الدارة':'🔓 شغّل الدارة',getActive:()=>ctx.closed,onClick:()=>{ctx.closed=!ctx.closed;}}];
   return ctx;
 }
 
+/* دارة 4: الدرج - مفتاحان ومصباح واحد */
 function buildVa(){
-  const ctx = newCtx();
-  ctx.target = [0, 1.2, 0]; ctx.camPos = [0.5, 4, 13];
-  ctx.s1 = 0; ctx.s2 = 0;
-  const computeClosed = () => ctx.s1 === ctx.s2;
-  const L = -5;
-  const bat = new THREE.Group();
-  bat.add(box(0.7, 1.8, 0.7, MAT.dark, 0, 0, 0));
-  bat.add(box(0.72, 0.5, 0.72, MAT.yellow, 0, 0, 0));
-  bat.add(box(0.74, 0.3, 0.74, MAT.red, 0, 0.55, 0));
-  bat.add(box(0.74, 0.3, 0.74, MAT.blue, 0, -0.55, 0));
-  bat.position.set(L, 1.2, 0); ctx.group.add(bat);
-  addWire(ctx, [[L+0.4,1.2,0],[-2.6,1.2,0],[-2.6,1.8,0]],
-    {color:0x8b1a1a, radius:0.075, count:6, electronColor:0xffd060});
-  const s1 = new THREE.Group();
-  s1.position.set(-2.2, 1.8, 0);
-  s1.add(box(1.4, 0.3, 0.7, MAT.dark, 0, 0, 0));
-  s1.add(sph(0.11, MAT.brass, -0.55, 0.16, 0));
-  s1.add(sph(0.11, MAT.brass,  0.45, 0.55, 0));
-  s1.add(sph(0.11, MAT.brass,  0.45, -0.25, 0));
-  const s1lever = new THREE.Group();
-  s1lever.position.set(-0.55, 0.16, 0);
-  const bar1 = cyl(0.06, 0.06, 1.1, MAT.metal, 0.55, 0, 0, 10);
-  bar1.rotation.z = Math.PI/2;
-  s1lever.add(bar1); s1.add(s1lever); ctx.group.add(s1);
-  const s2 = new THREE.Group();
-  s2.position.set(2.2, 1.8, 0);
-  s2.add(box(1.4, 0.3, 0.7, MAT.dark, 0, 0, 0));
-  s2.add(sph(0.11, MAT.brass,  0.55, 0.16, 0));
-  s2.add(sph(0.11, MAT.brass, -0.45, 0.55, 0));
-  s2.add(sph(0.11, MAT.brass, -0.45, -0.25, 0));
-  const s2lever = new THREE.Group();
-  s2lever.position.set(0.55, 0.16, 0);
-  const bar2 = cyl(0.06, 0.06, 1.1, MAT.metal, -0.55, 0, 0, 10);
-  bar2.rotation.z = Math.PI/2;
-  s2lever.add(bar2); s2.add(s2lever); ctx.group.add(s2);
-  addWire(ctx, [[-1.75,2.35,0],[-1.2,2.9,0],[1.2,2.9,0],[1.75,2.35,0]],
-    {color:0xd0433b, radius:0.06, count:10, electronColor:0xff8866});
-  addWire(ctx, [[-1.75,1.55,0],[-1.2,0.9,0],[1.2,0.9,0],[1.75,1.55,0]],
-    {color:0x3a82d6, radius:0.06, count:10, electronColor:0x88bbff});
-  addWire(ctx, [[2.75,1.8,0],[3.6,1.8,0]],
-    {color:0x8b1a1a, radius:0.075, count:4, electronColor:0xffd060});
-  addLamp(ctx, [4.2, 1.8, 0], 0.55);
-  addWire(ctx, [[4.75,1.8,0],[5,1.8,0],[5,-0.5,0],[-5,-0.5,0],[-5,1.2,0]],
-    {color:0x8b1a1a, radius:0.075, count:18, electronColor:0xffd060});
-  ctx.update = () => {
-    const closed = computeClosed();
-    const t1 = ctx.s1 === 0 ? 0 : 0.55;
-    const t2 = ctx.s2 === 0 ? 0 : 0.55;
-    s1lever.rotation.z += (t1 - s1lever.rotation.z) * 0.2;
-    s2lever.rotation.z += (t2 - s2lever.rotation.z) * 0.2;
-    updateLamps(ctx, closed);
+  const ctx=newCtx();ctx.s1=0;ctx.s2=0;ctx.target=[0,3,0];ctx.camPos=[0,5,16];
+  const isClosed=()=>ctx.s1===ctx.s2;
+  ctx.group.add(wall(15,9,0.4,0,3.5,-2.2));
+
+  // لوحة الأسفل (يسار) والمفتاحان
+  const b1=wallBox();b1.position.set(-4.5,1.8,-1.2);ctx.group.add(b1);
+  const sw1=wallSwitch();sw1.position.set(-4.5,1.8,-0.65);ctx.group.add(sw1);
+  const b2=wallBox();b2.position.set(4.5,1.8,-1.2);ctx.group.add(b2);
+  const sw2=wallSwitch();sw2.position.set(4.5,1.8,-0.65);ctx.group.add(sw2);
+
+  // مصباح في الوسط الأعلى
+  const rose=ceilingRose();rose.position.set(0,7,-1.8);ctx.group.add(rose);
+  addLampAt(ctx,[0,6.15,-1.8],0.7);
+
+  // تغذية إلى المفتاح 1
+  addCable(ctx,[[-7,5,-1.8],[-4.5,5,-1.8],[-4.5,2.6,-1.8]],
+    {insulation:M.iRed,count:12});
+  // كابلان بين المفتاحين (نافيت)
+  addCable(ctx,[[-3.8,2.4,-1.8],[-2,5.5,-1.8],[2,5.5,-1.8],[3.8,2.4,-1.8]],
+    {insulation:M.iRed,count:20});
+  addCable(ctx,[[-3.8,1.2,-1.8],[-2,0.4,-1.8],[2,0.4,-1.8],[3.8,1.2,-1.8]],
+    {insulation:M.iYellow,count:20});
+  // من المفتاح 2 إلى المصباح
+  addCable(ctx,[[4.5,2.6,-1.8],[4.5,6.5,-1.8],[0.5,6.5,-1.8]],
+    {insulation:M.iRed,count:16});
+  // عودة المصباح (محايد)
+  addCable(ctx,[[0,6.5,-1.8],[-7,6.5,-1.8],[-7,5,-1.8]],
+    {insulation:M.iBlue,count:20});
+
+  ctx.update=()=>{
+    const on=isClosed();
+    sw1.userData.pivot.rotation.x=ctx.s1===0?-0.05:0.28;
+    sw2.userData.pivot.rotation.x=ctx.s2===0?-0.05:0.28;
+    for(const L of ctx.lamps){
+      const g=L.obj.userData;
+      g.light.intensity+=((on?5:0)-g.light.intensity)*0.14;
+      g.filament.material.emissiveIntensity+=((on?6:0)-g.filament.material.emissiveIntensity)*0.14;
+    }
   };
-  ctx.buttons = [
-    {getLabel:()=>`مفتاح 1 : ${ctx.s1===0?'↑':'↓'}`, getActive:()=>true, onClick:()=>{ctx.s1 = 1-ctx.s1;}},
-    {getLabel:()=>`مفتاح 2 : ${ctx.s2===0?'↑':'↓'}`, getActive:()=>true, onClick:()=>{ctx.s2 = 1-ctx.s2;}},
+  ctx.buttons=[
+    {getLabel:()=>`مفتاح 1: ${ctx.s1===0?'↑ علوي':'↓ سفلي'}`,getActive:()=>true,onClick:()=>{ctx.s1=1-ctx.s1;}},
+    {getLabel:()=>`مفتاح 2: ${ctx.s2===0?'↑ علوي':'↓ سفلي'}`,getActive:()=>true,onClick:()=>{ctx.s2=1-ctx.s2;}}
   ];
   return ctx;
 }
 
-function buildSocketCircuit(){
-  const ctx = newCtx();
-  ctx.target = [0, 1, 0]; ctx.camPos = [0.5, 3.5, 13];
-  const panel = new THREE.Group();
-  panel.add(box(2.2, 2.6, 0.8, MAT.plastic, 0, 0, 0));
-  panel.add(box(1.4, 1.2, 0.4, MAT.grey, 0, 0, 0.5));
-  panel.add(box(0.9, 0.55, 0.5, MAT.dark, 0, 0, 0.7));
-  panel.add(box(0.55, 0.55, 0.55, MAT.red, 0, -0.7, 0.7));
-  panel.position.set(-4, 1.4, 0); ctx.group.add(panel);
-  const breakerLever = box(0.35, 0.35, 0.55, MAT.red, -4, 1.65, 0.95);
-  ctx.group.add(breakerLever);
-  addWire(ctx, [[-3,2.0,0],[-1,2.0,0],[1,2.0,0],[2.2,1.5,0]],
-    {color:0xd0433b, radius:0.075, count:16, electronColor:0xff8866});
-  addWire(ctx, [[-3,0.8,0],[-1,0.8,0],[1,0.8,0],[2.2,1.0,0]],
-    {color:0x3a82d6, radius:0.075, count:16, electronColor:0x88bbff});
-  addWire(ctx, [[-3,0.1,0],[-1,0.1,0],[1,0.1,0],[2.2,0.55,0]],
-    {color:0x2eb872, radius:0.06, count:12, electronColor:0x88ffbb});
-  const sock = new THREE.Group();
-  sock.position.set(3, 1.4, 0);
-  sock.add(box(1.6, 1.6, 0.6, MAT.plastic, 0, 0, 0));
-  const disc = cyl(0.55, 0.55, 0.4, MAT.plastic, 0, 0, 0.4, 40);
-  disc.rotation.x = Math.PI/2; sock.add(disc);
-  const h1 = cyl(0.12, 0.12, 0.25, MAT.dark, -0.22, 0.05, 0.62, 16); h1.rotation.x = Math.PI/2; sock.add(h1);
-  const h2 = cyl(0.12, 0.12, 0.25, MAT.dark,  0.22, 0.05, 0.62, 16); h2.rotation.x = Math.PI/2; sock.add(h2);
-  sock.add(box(0.18, 0.32, 0.15, MAT.dark, 0, -0.4, 0.62));
-  ctx.group.add(sock);
-  addLamp(ctx, [3, 3.2, 0], 0.55);
-  ctx.group.add(cyl(0.4, 0.5, 0.32, MAT.brass, 3, 2.6, 0, 24));
-  addWire(ctx, [[3.3,1.9,0],[3.4,2.3,0],[3,2.6,0]],
-    {color:0xd0433b, radius:0.06, count:5, electronColor:0xff8866});
-  addWire(ctx, [[2.7,1.9,0],[2.6,2.3,0],[3,2.6,0]],
-    {color:0x3a82d6, radius:0.06, count:5, electronColor:0x88bbff});
-  ctx.update = () => {
-    const on = ctx.closed;
-    breakerLever.position.y = on ? 1.4 : 2.0;
-    breakerLever.rotation.z = on ? 0 : 0.9;
-    for (const L of ctx.lamps){
-      L.light.intensity += ((on?4:0) - L.light.intensity) * 0.14;
-      L.mat.emissiveIntensity += ((on?2.5:0) - L.mat.emissiveIntensity) * 0.14;
+/* دارة 5: مقبس مع قاطع MCB */
+function buildSocket(){
+  const ctx=newCtx();ctx.target=[0,3,0];ctx.camPos=[0,4,15];
+  ctx.group.add(wall(14,9,0.4,0,3.5,-2.2));
+
+  // لوحة توزيع يسار
+  const pan=mk(new THREE.BoxGeometry(2.6,3.4,0.5),M.plate,-5,3,-1.95);ctx.group.add(pan);
+  ctx.group.add(mk(new THREE.BoxGeometry(2.2,1.2,0.05),M.dark,-5,3.5,-1.65));
+  const mcb=breaker(16,0xd0433b);mcb.position.set(-5,3,-1.55);mcb.scale.setScalar(0.45);ctx.group.add(mcb);
+
+  // مقبس جداري يمين
+  const ob=wallBox();ob.position.set(3.5,3,-1.2);ctx.group.add(ob);
+  const out=wallOutlet();out.position.set(3.5,3,-0.65);ctx.group.add(out);
+
+  // ثلاث كابلات بين اللوحة والمقبس
+  addCable(ctx,[[-3.7,3.8,-1.7],[0,3.8,-1.7],[3.5,3.7,-1.7]],
+    {insulation:M.iRed,count:20});
+  addCable(ctx,[[-3.7,3.4,-1.7],[0,3.4,-1.7],[3.5,3.3,-1.7]],
+    {insulation:M.iBlue,count:20});
+  addCable(ctx,[[-3.7,3.0,-1.7],[0,3.0,-1.7],[3.5,2.9,-1.7]],
+    {insulation:M.iGreen,count:20});
+
+  // مصباح موصول للمقبس (كأنه حمل)
+  const rose=ceilingRose();rose.position.set(3.5,6.5,-1.8);ctx.group.add(rose);
+  addLampAt(ctx,[3.5,5.65,-1.8],0.7);
+  addCable(ctx,[[3.5,3.7,-1.8],[3.5,6,-1.8]],
+    {insulation:M.iRed,count:12});
+  addCable(ctx,[[3.5,3.3,-1.8],[4.5,6,-1.8],[3.5,6,-1.8]],
+    {insulation:M.iBlue,count:14});
+
+  ctx.update=()=>{
+    const on=ctx.closed;
+    mcb.userData.lever.rotation.x=on?-0.15:0.35;
+    for(const L of ctx.lamps){
+      const g=L.obj.userData;
+      g.light.intensity+=((on?5:0)-g.light.intensity)*0.14;
+      g.filament.material.emissiveIntensity+=((on?6:0)-g.filament.material.emissiveIntensity)*0.14;
     }
   };
-  ctx.buttons = [{getLabel:()=>ctx.closed?'🔒 افصل القاطع':'🔓 أغلق القاطع',
-    getActive:()=>ctx.closed, onClick:()=>{ctx.closed = !ctx.closed;}}];
+  ctx.buttons=[{getLabel:()=>ctx.closed?'🔒 افصل القاطع':'🔓 أغلق القاطع',getActive:()=>ctx.closed,onClick:()=>{ctx.closed=!ctx.closed;}}];
   return ctx;
 }
 
-function buildDistribution(){
-  const ctx = newCtx();
-  ctx.target = [0, 1, 0]; ctx.camPos = [0.5, 4, 16];
-  const panel = new THREE.Group();
-  panel.add(box(3, 4.2, 0.8, MAT.plastic, 0, 0, 0));
-  panel.position.set(-5, 1.2, 0); ctx.group.add(panel);
-  ctx.group.add(box(1.6, 0.7, 0.55, MAT.dark, -5, 3.0, 0.55));
-  const mainLever = box(0.5, 0.4, 0.6, MAT.red, -5, 3.2, 0.85);
-  ctx.group.add(mainLever);
-  const branchLevers = [];
-  for (let i=0;i<3;i++){
-    const y = 1.2 - i*1.2;
-    ctx.group.add(box(1.2, 0.5, 0.5, MAT.grey, -5, y, 0.55));
-    const lv = box(0.35, 0.3, 0.55, MAT.red, -5, y+0.15, 0.85);
-    ctx.group.add(lv);
-    branchLevers.push(lv);
+/* دارة 6: لوحة توزيع - 3 فروع مستقلة */
+function buildPanel(){
+  const ctx=newCtx();ctx.target=[0,3,0];ctx.camPos=[0,4,17];
+  ctx.branches=[true,true,true];
+  ctx.group.add(wall(18,10,0.4,0,4,-2.2));
+
+  // لوحة رئيسية
+  ctx.group.add(mk(new THREE.BoxGeometry(4,5.5,0.5),M.plate,-6,3.5,-1.95));
+  ctx.group.add(mk(new THREE.BoxGeometry(3.6,2,0.05),M.dark,-6,4.3,-1.65));
+  const main=breaker(32,0x2f81f7);main.position.set(-6,4,-1.5);main.scale.setScalar(0.55);ctx.group.add(main);
+  const subs=[];
+  for(let i=0;i<3;i++){
+    const y=2.6-i*1.1;
+    const b=breaker(16,[0xd0433b,0x2f81f7,0x2eb872][i]);b.position.set(-6,y,-1.5);b.scale.setScalar(0.45);ctx.group.add(b);
+    subs.push(b);
   }
-  const yH = [2.4, 1.2, 0.0];
-  const colors = [0xd0433b, 0x2f81f7, 0x2eb872];
-  const electronColors = [0xff8866, 0x88bbff, 0x88ffbb];
-  for (let i=0;i<3;i++){
-    const y = yH[i];
-    addWire(ctx, [[-3.5,y,0],[2.2,y,0]],
-      {color: colors[i], radius:0.075, count:16, electronColor: electronColors[i]});
-    addWire(ctx, [[2.6,y,0],[5,y,0],[5,y-0.7,0],[-5,y-0.7,0],[-5,y,0]],
-      {color: 0x3a82d6, radius:0.06, count:18, electronColor: 0x88bbff});
-    ctx.group.add(sph(0.14, MAT.brass, 2.4, y, 0));
+
+  // الفروع الثلاثة
+  const ys=[5.5,3.5,1.5];
+  const colors=[M.iRed,M.iYellow,M.iGreen];
+  for(let i=0;i<3;i++){
+    const y=ys[i];
+    addCable(ctx,[[-4, y,-1.7],[6.5, y,-1.7]],
+      {insulation:colors[i],count:24});
+    addCable(ctx,[[6.5, y,-1.75],[7.5, y,-1.75],[7.5, y-1,-1.75],[-4, y-1,-1.75],[-4, y,-1.75]],
+      {insulation:M.iBlue,count:26,exposeEnds:false});
+    const rose=ceilingRose();rose.position.set(5.5, y+0.6,-1.8);ctx.group.add(rose);
+    addLampAt(ctx,[5.5, y-0.25,-1.8],0.55,i);
   }
-  addLamp(ctx, [3.8, 2.4, 0], 0.5, 0);
-  addLamp(ctx, [3.8, 1.2, 0], 0.5, 1);
-  addLamp(ctx, [3.8, 0.0, 0], 0.5, 2);
-  for (let i=0;i<3;i++){
-    const c = cyl(0.35, 0.45, 0.28, MAT.brass, 3.5, yH[i], 0, 20);
-    c.rotation.z = Math.PI/2; ctx.group.add(c);
-  }
-  ctx.branches = [true, true, true];
-  ctx.customFlow = () => ctx.branches;
-  ctx.update = () => {
-    for (let i=0;i<3;i++){
-      const on = ctx.branches[i];
-      branchLevers[i].position.y = (1.2 - i*1.2) + (on?0.15:-0.05);
-      branchLevers[i].rotation.z = on ? 0 : 0.7;
+
+  ctx.update=()=>{
+    for(let i=0;i<3;i++){
+      const on=ctx.branches[i];
+      subs[i].userData.lever.rotation.x=on?-0.15:0.35;
     }
-    for (const L of ctx.lamps){
-      const on = ctx.branches[L.branch];
-      L.light.intensity += ((on?3.5:0) - L.light.intensity) * 0.14;
-      L.mat.emissiveIntensity += ((on?2.3:0) - L.mat.emissiveIntensity) * 0.14;
+    for(const L of ctx.lamps){
+      const on=ctx.branches[L.branch];
+      const g=L.obj.userData;
+      g.light.intensity+=((on?4:0)-g.light.intensity)*0.14;
+      g.filament.material.emissiveIntensity+=((on?5:0)-g.filament.material.emissiveIntensity)*0.14;
     }
   };
-  ctx.buttons = [
-    {getLabel:()=>`غرفة 1 : ${ctx.branches[0]?'مضاءة':'مطفأة'}`, getActive:()=>ctx.branches[0], onClick:()=>{ctx.branches[0] = !ctx.branches[0];}},
-    {getLabel:()=>`غرفة 2 : ${ctx.branches[1]?'مضاءة':'مطفأة'}`, getActive:()=>ctx.branches[1], onClick:()=>{ctx.branches[1] = !ctx.branches[1];}},
-    {getLabel:()=>`غرفة 3 : ${ctx.branches[2]?'مضاءة':'مطفأة'}`, getActive:()=>ctx.branches[2], onClick:()=>{ctx.branches[2] = !ctx.branches[2];}},
+  ctx.customFlow=()=>ctx.branches.map(b=>b);
+  ctx.buttons=[
+    {getLabel:()=>`فرع 1: ${ctx.branches[0]?'مض':'مطف'}`,getActive:()=>ctx.branches[0],onClick:()=>{ctx.branches[0]=!ctx.branches[0];}},
+    {getLabel:()=>`فرع 2: ${ctx.branches[1]?'مض':'مطف'}`,getActive:()=>ctx.branches[1],onClick:()=>{ctx.branches[1]=!ctx.branches[1];}},
+    {getLabel:()=>`فرع 3: ${ctx.branches[2]?'مض':'مطف'}`,getActive:()=>ctx.branches[2],onClick:()=>{ctx.branches[2]=!ctx.branches[2];}}
   ];
   return ctx;
 }
 
-const CIRCUITS = {
-  simple:   {label:'دارة بسيطة',   title:'دارة كهربائية بسيطة',     desc:'بطارية + مفتاح + مصباح: عند غلق المفتاح يمر التيار ويعمل المصباح.', build: buildSimple},
-  series:   {label:'على التوالي',  title:'دارة على التوالي',         desc:'المصابيح متصلة بالتتابع — كلما زاد العدد قلّت الإضاءة.',           build: buildSeries},
-  parallel: {label:'على التوازي',  title:'دارة على التوازي',         desc:'كل مصباح في فرع مستقل — فتح أحد الفروع لا يؤثر على الآخر.',        build: buildParallel},
-  va:       {label:'دارة الدرج',   title:'دارة الدرج (Va-et-vient)', desc:'مفتاحان يتحكمان بمصباح واحد: يُشغّل من الأسفل ويُطفأ من الأعلى.',  build: buildVa},
-  socket:   {label:'المقبس',       title:'دارة المقبس مع القاطع',   desc:'القاطع يحمي فرع المقبس — عند فصله يتوقف التيار عن الحمل.',        build: buildSocketCircuit},
-  panel:    {label:'لوحة التوزيع', title:'لوحة توزيع منزلية',         desc:'قاطع رئيسي + 3 قواطع فرعية تغذي غرفًا مختلفة بشكل مستقل.',        build: buildDistribution},
+const CIRCUITS={
+  simple:{label:'دارة بسيطة',title:'دارة إنارة بسيطة',desc:'مفتاح جداري يتحكم بمصباح - عند غلقه يمر التيار.',build:buildSimple},
+  series:{label:'على التوالي',title:'دارة على التوالي',desc:'مصباحان على نفس المسار - إضاءة أضعف ونصف الجهد.',build:buildSeries},
+  parallel:{label:'على التوازي',title:'دارة على التوازي',desc:'فرعان مستقلان - عطل أحدهما لا يوقف الآخر.',build:buildParallel},
+  va:{label:'دارة الدرج',title:'دارة الدرج (Va-et-vient)',desc:'مفتاحان يتحكمان بمصباح واحد من مكانين.',build:buildVa},
+  socket:{label:'المقبس',title:'مقبس مع قاطع MCB',desc:'قاطع 16A يحمي فرع المقبس من الأحمال الزائدة.',build:buildSocket},
+  panel:{label:'لوحة التوزيع',title:'لوحة توزيع منزلية',desc:'قاطع رئيسي + 3 فروع مستقلة لغرف مختلفة.',build:buildPanel}
 };
 
-let currentGroup = null;
-let activeCtx = null;
-
+let curGrp=null,actCtx=null;
 function renderControls(){
-  controlsEl.innerHTML = '';
-  if (!activeCtx || !activeCtx.buttons) return;
-  for (const b of activeCtx.buttons){
-    const btn = document.createElement('button');
-    btn.textContent = b.getLabel();
-    if (!b.getActive()) btn.classList.add('off');
-    btn.onclick = () => { b.onClick(); renderControls(); };
+  controlsEl.innerHTML='';
+  if(!actCtx)return;
+  for(const b of actCtx.buttons){
+    const btn=document.createElement('button');
+    btn.textContent=b.getLabel();
+    if(!b.getActive())btn.classList.add('off');
+    btn.onclick=()=>{b.onClick();renderControls();};
     controlsEl.appendChild(btn);
   }
 }
-
-function loadCircuit(key){
-  if (currentGroup) scene.remove(currentGroup);
-  const cfg = CIRCUITS[key];
-  activeCtx = cfg.build();
-  currentGroup = activeCtx.group;
-  scene.add(currentGroup);
-  controls.target.set(activeCtx.target[0], activeCtx.target[1], activeCtx.target[2]);
-  camera.position.set(activeCtx.camPos[0], activeCtx.camPos[1], activeCtx.camPos[2]);
+function loadCircuit(k){
+  if(curGrp)scene.remove(curGrp);
+  const cfg=CIRCUITS[k];actCtx=cfg.build();curGrp=actCtx.group;
+  scene.add(curGrp);
+  controls.target.set(...actCtx.target);
+  camera.position.set(...actCtx.camPos);
   controls.update();
-  infoEl.innerHTML = `<h2>${cfg.title}</h2><p>${cfg.desc}</p>`;
-  [...tabsEl.children].forEach(b => b.classList.toggle('active', b.dataset.k === key));
+  infoEl.innerHTML=`<h2>${cfg.title}</h2><p>${cfg.desc}</p>`;
+  [...tabsEl.children].forEach(b=>b.classList.toggle('active',b.dataset.k===k));
   renderControls();
 }
-
 function buildTabs(){
-  for (const [k,v] of Object.entries(CIRCUITS)){
-    const b = document.createElement('button');
-    b.className = 'tab';
-    b.dataset.k = k;
-    b.textContent = v.label;
-    b.onclick = () => loadCircuit(k);
-    tabsEl.appendChild(b);
+  for(const[k,v]of Object.entries(CIRCUITS)){
+    const b=document.createElement('button');b.className='tab';b.dataset.k=k;
+    b.textContent=v.label;b.onclick=()=>loadCircuit(k);tabsEl.appendChild(b);
   }
 }
-
 function resize(){
-  const r = viewer.getBoundingClientRect();
-  if (r.width < 1 || r.height < 1) return;
-  renderer.setSize(r.width, r.height, false);
-  camera.aspect = r.width / r.height;
-  camera.updateProjectionMatrix();
+  const r=viewer.getBoundingClientRect();
+  if(r.width<1||r.height<1)return;
+  renderer.setSize(r.width,r.height,false);
+  camera.aspect=r.width/r.height;camera.updateProjectionMatrix();
 }
 new ResizeObserver(resize).observe(viewer);
-window.addEventListener('resize', resize);
+window.addEventListener('resize',resize);
 
-let lastT = performance.now();
+let lastT=performance.now();
 function animate(){
   requestAnimationFrame(animate);
-  const now = performance.now();
-  const dt = Math.min(0.05, (now - lastT) / 1000);
-  lastT = now;
-
-  if (activeCtx){
-    const branchMask = activeCtx.customFlow ? activeCtx.customFlow() : (activeCtx.closed ? true : false);
-    for (let wi=0; wi<activeCtx.wires.length; wi++){
-      const w = activeCtx.wires[wi];
-      let flow = false;
-      if (Array.isArray(branchMask)){
-        const branchIdx = Math.min(2, Math.floor(wi / 2));
-        flow = branchMask[branchIdx];
-      } else {
-        flow = branchMask;
+  const now=performance.now(),dt=Math.min(0.05,(now-lastT)/1000);lastT=now;
+  if(actCtx){
+    const mask=actCtx.customFlow?actCtx.customFlow():(actCtx.closed?true:false);
+    for(let wi=0;wi<actCtx.wires.length;wi++){
+      const w=actCtx.wires[wi];
+      let flow=mask;
+      if(Array.isArray(mask)){
+        // نحسب رقم الفرع بناءً على عدد الأسلاك
+        const wpc=Math.floor(actCtx.wires.length/3);
+        const bi=Math.min(2,Math.floor(wi/wpc));
+        flow=mask[bi];
       }
-      const speed = flow ? 0.32 : 0;
-      for (const e of w.electrons){
-        if (speed > 0){
-          e.visible = true;
-          e.userData.offset = (e.userData.offset + speed * dt) % 1;
-          w.curve.getPointAt(e.userData.offset, e.position);
-        } else {
-          e.visible = false;
-        }
+      for(const e of w.electrons){
+        if(flow){
+          e.visible=true;
+          e.userData.offset=(e.userData.offset+0.3*dt)%1;
+          w.curve.getPointAt(e.userData.offset,e.position);
+        } else e.visible=false;
       }
     }
-    if (activeCtx.update) activeCtx.update();
+    if(actCtx.update)actCtx.update();
   }
-
   controls.update();
-  renderer.render(scene, camera);
+  renderer.render(scene,camera);
 }
-
-buildTabs();
-loadCircuit('simple');
-requestAnimationFrame(() => { resize(); animate(); });
+buildTabs();loadCircuit('simple');
+requestAnimationFrame(()=>{resize();animate();});
